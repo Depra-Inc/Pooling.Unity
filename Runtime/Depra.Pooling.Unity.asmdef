@@ -1,0 +1,18 @@
+{
+    "name": "Depra.Pooling.Unity",
+    "rootNamespace": "Depra.Pooling.Unity",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Depra.Borrow.dll",
+        "Depra.Pooling.dll",
+        "Depra.Pooling.Object.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
