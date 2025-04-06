@@ -20,14 +20,22 @@ namespace Depra.Pooling
 	{
 		private readonly ObjectPool<TPooled> _objectPool;
 
-		public UnityObjectPool(TPooled prefab, PoolSettings settings) => _objectPool = new ObjectPool<TPooled>(
-			new Factory(prefab.name, prefab),
-			new PoolConfiguration(
-				settings.Capacity,
-				settings.MaxCapacity,
-				settings.BorrowStrategy,
-				settings.OverflowStrategy),
-			prefab.GetInstanceID());
+		public UnityObjectPool(TPooled prefab, PoolSettings settings)
+		{
+			_objectPool = new ObjectPool<TPooled>(
+				new Factory(prefab.name, prefab),
+				new PoolConfiguration(
+					settings.Capacity,
+					settings.MaxCapacity,
+					settings.BorrowStrategy,
+					settings.OverflowStrategy),
+				prefab.GetInstanceID());
+
+			if (settings.WarmupCapacity > 0)
+			{
+				_objectPool.WarmUp(Math.Min(settings.WarmupCapacity, settings.MaxCapacity));
+			}
+		}
 
 		public void Dispose() => _objectPool.Dispose();
 

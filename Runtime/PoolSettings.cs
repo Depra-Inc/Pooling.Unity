@@ -11,6 +11,7 @@ namespace Depra.Pooling
 	{
 		[field: SerializeField] public int Capacity { get; private set; } = 10;
 		[field: SerializeField] public int MaxCapacity { get; private set; } = 100;
+		[field: SerializeField] public int WarmupCapacity { get; private set; }
 		[field: SerializeField] public BorrowStrategy BorrowStrategy { get; private set; }
 		[field: SerializeField] public OverflowStrategy OverflowStrategy { get; private set; }
 	}

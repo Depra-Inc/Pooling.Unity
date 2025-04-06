@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Depra.Pooling
 {
-	internal static class UnityPoolRoot
+	public static class UnityPoolRoot
 	{
 		private static Transform _instance;
 
@@ -18,14 +18,19 @@ namespace Depra.Pooling
 					return _instance;
 				}
 
-				var gameObject = new GameObject("[Pooling]")
-				{
-					hideFlags = HideFlags.NotEditable
-				};
-				UnityEngine.Object.DontDestroyOnLoad(gameObject);
+				var gameObject = new GameObject("[Pooling]") { hideFlags = HideFlags.NotEditable };
 				_instance = gameObject.transform;
 
 				return _instance;
+			}
+		}
+
+		public static void Destroy()
+		{
+			if (_instance != null)
+			{
+				UnityEngine.Object.Destroy(_instance.gameObject);
+				_instance = null;
 			}
 		}
 	}
