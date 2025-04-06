@@ -18,9 +18,13 @@ namespace Depra.Pooling
 					return _instance;
 				}
 
-				_instance = new GameObject("[Pooling]").transform;
-				_instance.hideFlags = HideFlags.NotEditable;
-				_instance.gameObject.SetActive(false);
+				var gameObject = new GameObject("[Pooling]")
+				{
+					hideFlags = HideFlags.NotEditable
+				};
+				UnityEngine.Object.DontDestroyOnLoad(gameObject);
+				_instance = gameObject.transform;
+
 				return _instance;
 			}
 		}
