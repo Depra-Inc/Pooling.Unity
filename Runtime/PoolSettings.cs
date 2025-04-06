@@ -9,7 +9,6 @@ namespace Depra.Pooling
 	[System.Serializable]
 	public sealed class PoolSettings
 	{
-		[field: SerializeField] public string Key { get; private set; }
 		[field: SerializeField] public int Capacity { get; private set; } = 10;
 		[field: SerializeField] public int MaxCapacity { get; private set; } = 100;
 		[field: SerializeField] public BorrowStrategy BorrowStrategy { get; private set; }

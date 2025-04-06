@@ -21,7 +21,7 @@ namespace Depra.Pooling
 		private readonly ObjectPool<TPooled> _objectPool;
 
 		public UnityObjectPool(TPooled prefab, PoolSettings settings) => _objectPool = new ObjectPool<TPooled>(
-			new Factory(settings.Key, prefab),
+			new Factory(prefab.name, prefab),
 			new PoolConfiguration(
 				settings.Capacity,
 				settings.MaxCapacity,
@@ -62,10 +62,13 @@ namespace Depra.Pooling
 			private readonly TPooled _original;
 			private readonly Transform _parent;
 
-			public Factory(string key, TPooled original)
+			public Factory(string displayName, TPooled original)
 			{
 				_original = original;
-				_parent = new GameObject($"Pool {key}").transform;
+				_parent = new GameObject($"[Pool] {displayName}")
+				{
+					hideFlags = HideFlags.NotEditable
+				}.transform;
 			}
 
 			TPooled IPooledObjectFactory<TPooled>.Create(object key) =>
