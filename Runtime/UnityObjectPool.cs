@@ -69,6 +69,7 @@ namespace Depra.Pooling
 				{
 					hideFlags = HideFlags.NotEditable
 				}.transform;
+				_parent.SetParent(UnityPoolRoot.Instance);
 			}
 
 			TPooled IPooledObjectFactory<TPooled>.Create(object key) =>
