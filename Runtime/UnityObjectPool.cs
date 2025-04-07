@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// © 2024 Nikolay Melnikov <n.melnikov@depra.org>
+// © 2024-2025 Depra <n.melnikov@depra.org>
 
 using System;
 using System.Runtime.CompilerServices;
@@ -22,9 +22,19 @@ namespace Depra.Pooling
 
 		public UnityObjectPool(TPooled prefab, PoolSettings settings)
 		{
-			var objectFactory = new Factory(settings.Key, prefab);
-			_objectPool = new ObjectPool<TPooled>(settings.BorrowStrategy, objectFactory,
-				settings.Key, settings.Capacity, settings.MaxCapacity);
+			_objectPool = new ObjectPool<TPooled>(
+				new Factory(prefab.name, prefab),
+				new PoolConfiguration(
+					settings.Capacity,
+					settings.MaxCapacity,
+					settings.BorrowStrategy,
+					settings.OverflowStrategy),
+				prefab.GetInstanceID());
+
+			if (settings.WarmupCapacity > 0)
+			{
+				_objectPool.WarmUp(Math.Min(settings.WarmupCapacity, settings.MaxCapacity));
+			}
 		}
 
 		public void Dispose() => _objectPool.Dispose();
@@ -60,10 +70,14 @@ namespace Depra.Pooling
 			private readonly TPooled _original;
 			private readonly Transform _parent;
 
-			public Factory(string key, TPooled original)
+			public Factory(string displayName, TPooled original)
 			{
 				_original = original;
-				_parent = new GameObject($"{key} Pool").transform;
+				_parent = new GameObject($"[Pool] {displayName}")
+				{
+					hideFlags = HideFlags.NotEditable
+				}.transform;
+				_parent.SetParent(UnityPoolRoot.Instance);
 			}
 
 			TPooled IPooledObjectFactory<TPooled>.Create(object key) =>
