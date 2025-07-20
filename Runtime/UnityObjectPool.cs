@@ -18,30 +18,44 @@ namespace Depra.Pooling
 	public sealed class UnityObjectPool<TPooled> : IDisposable, IPool<TPooled>, IPoolHandle<TPooled>
 		where TPooled : MonoBehaviour, IPooled
 	{
+		private readonly Factory _factory;
 		private readonly ObjectPool<TPooled> _objectPool;
 
 		public UnityObjectPool(TPooled prefab, PoolSettings settings)
 		{
-			_objectPool = new ObjectPool<TPooled>(
-				new Factory(prefab.name, prefab),
+			_factory = new Factory(prefab.name, prefab);
+			_objectPool = new ObjectPool<TPooled>(_factory,
 				new PoolConfiguration(
 					settings.Capacity,
 					settings.MaxCapacity,
 					settings.BorrowStrategy,
 					settings.OverflowStrategy),
 				prefab.GetInstanceID());
-
-			if (settings.WarmupCapacity > 0)
-			{
-				_objectPool.WarmUp(Math.Min(settings.WarmupCapacity, settings.MaxCapacity));
-			}
 		}
 
-		public void Dispose() => _objectPool.Dispose();
+		public void Dispose()
+		{
+			_objectPool?.Dispose();
+			_factory.Dispose();
+		}
 
-		public int CountAll => _objectPool.CountAll;
-		public int CountActive => _objectPool.CountActive;
-		public int CountPassive => _objectPool.CountPassive;
+		public int CountAll
+		{
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _objectPool.CountAll;
+		}
+
+		public int CountActive
+		{
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _objectPool.CountActive;
+		}
+
+		public int CountPassive
+		{
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			get => _objectPool.CountPassive;
+		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public TPooled Request() => _objectPool.Request();
@@ -67,35 +81,60 @@ namespace Depra.Pooling
 #endif
 		private sealed class Factory : IPooledObjectFactory<TPooled>
 		{
+			private const string NAME_FORMAT = "[Pool] {0}";
+
 			private readonly TPooled _original;
 			private readonly Transform _parent;
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public Factory(string displayName, TPooled original)
 			{
 				_original = original;
-				_parent = new GameObject($"[Pool] {displayName}")
+				_parent = new GameObject(string.Format(NAME_FORMAT, displayName))
 				{
 					hideFlags = HideFlags.NotEditable
 				}.transform;
+
 				_parent.SetParent(UnityPoolRoot.Instance);
 			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			public void Dispose()
+			{
+				if (_parent)
+				{
+					UnityEngine.Object.Destroy(_parent.gameObject);
+				}
+			}
+
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			TPooled IPooledObjectFactory<TPooled>.Create(object key) =>
 				UnityEngine.Object.Instantiate(_original);
 
-			void IPooledObjectFactory<TPooled>.Destroy(object key, TPooled instance) =>
-				UnityEngine.Object.Destroy(instance.gameObject);
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			void IPooledObjectFactory<TPooled>.Destroy(object key, TPooled instance)
+			{
+				if (instance)
+				{
+					UnityEngine.Object.Destroy(instance.gameObject);
+				}
+			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			void IPooledObjectFactory<TPooled>.OnEnable(object key, TPooled instance)
 			{
 				instance.transform.SetParent(null);
 				instance.gameObject.SetActive(true);
 			}
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			void IPooledObjectFactory<TPooled>.OnDisable(object key, TPooled instance)
 			{
-				instance.transform.SetParent(_parent);
-				instance.gameObject.SetActive(false);
+				if (instance)
+				{
+					instance.transform.SetParent(_parent);
+					instance.gameObject.SetActive(false);
+				}
 			}
 		}
 	}

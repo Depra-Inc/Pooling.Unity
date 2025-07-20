@@ -1,6 +1,7 @@
 ﻿// SPDX-License-Identifier: Apache-2.0
 // © 2024-2025 Depra <n.melnikov@depra.org>
 
+using System;
 using System.Collections.Generic;
 using Depra.Spawn;
 using UnityEngine;
@@ -17,11 +18,23 @@ namespace Depra.Pooling
 		{
 			foreach (var (prefab, settings) in _entries)
 			{
-				service.Register(prefab.GetInstanceID(), new UnityObjectPool<PooledGameObject>(prefab, settings));
+				var instanceId = prefab.GetInstanceID();
+				if (service.IsRegistered(instanceId))
+				{
+					continue;
+				}
+
+				var objectPool = new UnityObjectPool<PooledGameObject>(prefab, settings);
+				service.Register(instanceId, objectPool);
+
+				if (settings.WarmupCapacity > 0)
+				{
+					objectPool.WarmUp(Math.Min(settings.WarmupCapacity, settings.MaxCapacity));
+				}
 			}
 		}
 
-		[System.Serializable]
+		[Serializable]
 		private sealed class Entry
 		{
 			[field: SerializeField] public PooledGameObject Prefab { get; private set; }

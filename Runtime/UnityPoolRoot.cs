@@ -2,6 +2,7 @@
 // © 2024-2025 Depra <n.melnikov@depra.org>
 
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Depra.Pooling
 {
@@ -15,7 +16,12 @@ namespace Depra.Pooling
 			{
 				if (_instance != null)
 				{
-					return _instance;
+					if (_instance.gameObject.scene == SceneManager.GetActiveScene())
+					{
+						return _instance;
+					}
+
+					Destroy();
 				}
 
 				var gameObject = new GameObject("[Pooling]") { hideFlags = HideFlags.NotEditable };
