@@ -17,9 +17,9 @@ namespace Depra.Pooling
 	{
 		[SerializeField] private PooledComponent[] _components;
 
-		private Rigidbody _rigidbody;
+		private Rigidbody _rb;
 
-		private void Awake() => _rigidbody = GetComponent<Rigidbody>();
+		private void Awake() => _rb = GetComponent<Rigidbody>();
 
 		public virtual void OnPoolCreate(IPool pool) { }
 
@@ -36,10 +36,10 @@ namespace Depra.Pooling
 		public virtual void SetPositionAndRotation(Vector3 position, Quaternion rotation)
 		{
 			transform.SetPositionAndRotation(position, rotation);
-			if (_rigidbody)
+			if (_rb)
 			{
-				_rigidbody.position = position;
-				_rigidbody.rotation = rotation;
+				_rb.position = position;
+				_rb.rotation = rotation;
 			}
 
 			ResetComponents();
