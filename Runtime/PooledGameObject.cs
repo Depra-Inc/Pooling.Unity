@@ -17,20 +17,33 @@ namespace Depra.Pooling
 	{
 		[SerializeField] private PooledComponent[] _components;
 
+		private Rigidbody _rigidbody;
+
+		private void Awake() => _rigidbody = GetComponent<Rigidbody>();
+
 		public virtual void OnPoolCreate(IPool pool) { }
 
 		public virtual void OnPoolGet() { }
 
 		public virtual void OnPoolSleep() { }
 
-		// TODO: make this method non-virtual.
-		public virtual void OnPoolReuse()
-		{
-			ResetComponents();
-			OnPoolReuseOverride();
-		}
+		public virtual void OnPoolReuse() { }
 
-		protected virtual void OnPoolReuseOverride() { }
+		/// <summary>
+		/// Sets the position and rotation, then resets all pooled components.
+		/// Use this method if you explicitly want both actions together.
+		/// </summary>
+		public virtual void SetPositionAndRotation(Vector3 position, Quaternion rotation)
+		{
+			transform.SetPositionAndRotation(position, rotation);
+			if (_rigidbody)
+			{
+				_rigidbody.position = position;
+				_rigidbody.rotation = rotation;
+			}
+
+			ResetComponents();
+		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private void ResetComponents()
