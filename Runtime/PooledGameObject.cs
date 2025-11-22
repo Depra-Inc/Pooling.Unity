@@ -23,14 +23,21 @@ namespace Depra.Pooling
 
 		public virtual void OnPoolSleep() { }
 
-		// TODO: make this method non-virtual.
-		public virtual void OnPoolReuse()
-		{
-			ResetComponents();
-			OnPoolReuseOverride();
-		}
+		public virtual void OnPoolReuse() { }
 
-		protected virtual void OnPoolReuseOverride() { }
+		public virtual void SetPositionAndRotation(Vector3 position, Quaternion rotation)
+		{
+			transform.position = position;
+			transform.rotation = rotation;
+
+			if (TryGetComponent(out Rigidbody rb))
+			{
+				rb.position = position;
+				rb.rotation = rotation;
+			}
+
+			ResetComponents();
+		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private void ResetComponents()
