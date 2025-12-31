@@ -112,7 +112,7 @@ namespace Depra.Pooling
 			for (int index = lastIndex, length = results.Length; index < length; index++)
 			{
 				++CountAll;
-				var obj = created[index];
+				var obj = results[index] = created[index];
 				obj.OnPoolCreate(this);
 				_objectFactory.OnEnable(Key, obj);
 
