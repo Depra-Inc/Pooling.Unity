@@ -22,6 +22,7 @@ namespace Depra.Pooling
 		where TPooled : MonoBehaviour, IPooled
 	{
 		private readonly int _maxCapacity;
+		private readonly object _sync = new();
 		private readonly Factory _objectFactory;
 		private readonly OverflowStrategy _overflowStrategy;
 		private readonly IBorrowBuffer<PooledInstance<TPooled>> _passiveInstances;
@@ -93,32 +94,56 @@ namespace Depra.Pooling
 
 		public async Task<TPooled[]> RequestAsync(int count, CancellationToken cancellationToken)
 		{
+			if (count <= 0)
+			{
+				throw new ArgumentOutOfRangeException(nameof(count), "Count must be greater than zero.");
+			}
+
+			int inStockCount;
 			var lastIndex = 0;
 			var results = new TPooled[count];
-			var inStockCount = Math.Min(count, CountPassive);
 
-			if (inStockCount > 0)
+			lock (_sync)
 			{
-				var obj = ReusePassiveInstance(out var instance);
-				results[lastIndex++] = obj;
-				instance.OnPoolGet();
-				_objectFactory.OnEnable(Key, obj);
-				_activeInstances.Add(instance);
+				inStockCount = Math.Min(count, CountPassive);
+				if (inStockCount > 0)
+				{
+					for (var i = lastIndex; i < inStockCount; i++)
+					{
+						var obj = ReusePassiveInstance(out var instance);
+						results[lastIndex++] = obj;
+						instance.OnPoolGet();
+						_objectFactory.OnEnable(Key, obj);
+						_activeInstances.Add(instance);
+					}
+				}
 			}
 
 			var toCreateCount = count - inStockCount;
-			var created = await _objectFactory.CreateAsync(toCreateCount, cancellationToken);
-
-			for (int index = lastIndex, length = results.Length; index < length; index++)
+			TPooled[] created = null;
+			if (toCreateCount > 0)
 			{
-				++CountAll;
-				var obj = results[index] = created[index];
-				obj.OnPoolCreate(this);
-				_objectFactory.OnEnable(Key, obj);
+				created = await _objectFactory.CreateAsync(toCreateCount, cancellationToken);
+			}
 
-				var instance = new PooledInstance<TPooled>(this, obj);
-				instance.OnPoolGet();
-				_activeInstances.Add(instance);
+			if (created == null)
+			{
+				return results;
+			}
+
+			lock (_sync)
+			{
+				for (var index = 0; index < toCreateCount; index++)
+				{
+					++CountAll;
+					var obj = results[lastIndex++] = created[index];
+					obj.OnPoolCreate(this);
+					_objectFactory.OnEnable(Key, obj);
+
+					var instance = new PooledInstance<TPooled>(this, obj);
+					instance.OnPoolGet();
+					_activeInstances.Add(instance);
+				}
 			}
 
 			return results;
