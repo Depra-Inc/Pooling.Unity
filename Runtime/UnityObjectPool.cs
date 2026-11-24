@@ -86,7 +86,6 @@ namespace Depra.Pooling
 			}
 
 			instance.OnPoolGet();
-			_objectFactory.OnEnable(Key, obj);
 			_activeInstances.Add(instance);
 
 			return obj;
@@ -113,7 +112,6 @@ namespace Depra.Pooling
 						var obj = ReusePassiveInstance(out var instance);
 						results[lastIndex++] = obj;
 						instance.OnPoolGet();
-						_objectFactory.OnEnable(Key, obj);
 						_activeInstances.Add(instance);
 					}
 				}
@@ -149,12 +147,42 @@ namespace Depra.Pooling
 			return results;
 		}
 
+		public void WarmUp(int count)
+		{
+			for (var index = 0; index < count; index++)
+			{
+				AddAsleep(_objectFactory.CreateAsleep());
+			}
+		}
+
+		public async Task WarmUpAsync(int count, CancellationToken cancellationToken)
+		{
+			if (count <= 0)
+			{
+				return;
+			}
+
+			var created = await _objectFactory.CreateAsync(count, cancellationToken);
+			lock (_sync)
+			{
+				foreach (var obj in created)
+				{
+					AddAsleep(obj);
+				}
+			}
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Release(TPooled obj)
 		{
 			if (obj is null)
 			{
 				throw new ArgumentNullException(nameof(obj), "Cannot release a null object.");
+			}
+
+			if (!obj)
+			{
+				return;
 			}
 
 			var instance = PooledInstance<TPooled>.Create(this, obj);
@@ -173,6 +201,14 @@ namespace Depra.Pooling
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private void AddAsleep(TPooled obj)
+		{
+			++CountAll;
+			obj.OnPoolCreate(this);
+			_passiveInstances.Add(new PooledInstance<TPooled>(this, obj));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private TPooled CreateInstanceOverCapacity(out PooledInstance<TPooled> instance) => _overflowStrategy switch
 		{
 			OverflowStrategy.REQUEST => CreateInstance(out instance),
@@ -188,6 +224,7 @@ namespace Depra.Pooling
 			var obj = instance.Obj;
 			obj.OnPoolCreate(this);
 			++CountAll;
+			_objectFactory.OnEnable(Key, obj);
 
 			return obj;
 		}
@@ -210,7 +247,14 @@ namespace Depra.Pooling
 		private TPooled ReuseActiveInstance(out PooledInstance<TPooled> instance)
 		{
 			instance = _activeInstances.Next();
+			if (!instance.Obj)
+			{
+				--CountAll;
+				return CreateInstance(out instance);
+			}
+
 			var obj = instance.Obj;
+			_objectFactory.OnEnable(Key, obj);
 			obj.OnPoolReuse();
 
 			return obj;
@@ -221,6 +265,7 @@ namespace Depra.Pooling
 		{
 			instance = _passiveInstances.Next();
 			var obj = instance.Obj;
+			_objectFactory.OnEnable(Key, obj);
 			obj.OnPoolReuse();
 
 			return obj;
@@ -256,6 +301,8 @@ namespace Depra.Pooling
 				}.transform;
 
 				_parent.SetParent(UnityPoolRoot.Instance);
+				// Instances created under an inactive parent don't run Awake/OnEnable until they are requested.
+				_parent.gameObject.SetActive(false);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -271,9 +318,12 @@ namespace Depra.Pooling
 			public TPooled Create(object key) =>
 				UnityEngine.Object.Instantiate(_original);
 
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			public TPooled CreateAsleep() => UnityEngine.Object.Instantiate(_original, _parent);
+
 			public Task<TPooled[]> CreateAsync(int count, CancellationToken cancellationToken)
 			{
-				var operation = UnityEngine.Object.InstantiateAsync(_original, count, new InstantiateParameters());
+				var operation = UnityEngine.Object.InstantiateAsync(_original, count, new InstantiateParameters { parent = _parent });
 				return operation.AsTask(cancellationToken);
 			}
 
@@ -287,11 +337,7 @@ namespace Depra.Pooling
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void OnEnable(object key, TPooled instance)
-			{
-				instance.transform.SetParent(null);
-				instance.gameObject.SetActive(true);
-			}
+			public void OnEnable(object key, TPooled instance) => instance.transform.SetParent(null);
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public void OnDisable(object key, TPooled instance)
@@ -299,7 +345,6 @@ namespace Depra.Pooling
 				if (instance)
 				{
 					instance.transform.SetParent(_parent);
-					instance.gameObject.SetActive(false);
 				}
 			}
 		}

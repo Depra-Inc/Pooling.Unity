@@ -18,14 +18,23 @@ namespace Depra.Pooling
 		[SerializeField] private PooledComponent[] _components;
 
 		private Rigidbody _rb;
+		private bool _isTaken;
 
 		private void Awake() => _rb = GetComponent<Rigidbody>();
 
+		private void OnDestroy()
+		{
+			if (_isTaken && gameObject.scene.isLoaded)
+			{
+				Debug.LogException(new PooledObjectDestroyed(this));
+			}
+		}
+
 		public virtual void OnPoolCreate(IPool pool) { }
 
-		public virtual void OnPoolGet() { }
+		public virtual void OnPoolGet() => _isTaken = true;
 
-		public virtual void OnPoolSleep() { }
+		public virtual void OnPoolSleep() => _isTaken = false;
 
 		public virtual void OnPoolReuse() { }
 

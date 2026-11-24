@@ -14,5 +14,14 @@ namespace Depra.Pooling
 		[field: SerializeField] public int WarmupCapacity { get; private set; }
 		[field: SerializeField] public BorrowStrategy BorrowStrategy { get; private set; }
 		[field: SerializeField] public OverflowStrategy OverflowStrategy { get; private set; }
+
+		public PoolSettings() { }
+
+		public PoolSettings(int capacity, int maxCapacity, OverflowStrategy overflowStrategy)
+		{
+			Capacity = capacity;
+			MaxCapacity = maxCapacity;
+			OverflowStrategy = overflowStrategy;
+		}
 	}
 }
