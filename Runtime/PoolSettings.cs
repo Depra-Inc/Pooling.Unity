@@ -23,5 +23,12 @@ namespace Depra.Pooling
 			MaxCapacity = maxCapacity;
 			OverflowStrategy = overflowStrategy;
 		}
+
+		// Warm-up capacity is left out: it says how many to create, not how the pool behaves.
+		public bool SameAs(PoolSettings other) => ReferenceEquals(this, other) || other != null &&
+			Capacity == other.Capacity &&
+			MaxCapacity == other.MaxCapacity &&
+			BorrowStrategy == other.BorrowStrategy &&
+			OverflowStrategy == other.OverflowStrategy;
 	}
 }

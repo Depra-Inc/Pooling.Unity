@@ -30,11 +30,24 @@ namespace Depra.Pooling
 			}
 		}
 
-		public virtual void OnPoolCreate(IPool pool) { }
+		public virtual void OnPoolCreate(IPool pool)
+		{
+			foreach (var component in _components)
+			{
+				component.OnPoolCreate();
+			}
+		}
 
 		public virtual void OnPoolGet() => _isTaken = true;
 
-		public virtual void OnPoolSleep() => _isTaken = false;
+		public virtual void OnPoolSleep()
+		{
+			_isTaken = false;
+			foreach (var component in _components)
+			{
+				component.OnPoolSleep();
+			}
+		}
 
 		public virtual void OnPoolReuse() { }
 

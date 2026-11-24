@@ -31,6 +31,7 @@ namespace Depra.Pooling
 		public UnityObjectPool(TPooled prefab, PoolSettings settings)
 		{
 			Key = prefab.GetInstanceID();
+			Settings = settings;
 			_maxCapacity = settings.MaxCapacity;
 			_overflowStrategy = settings.OverflowStrategy;
 			_objectFactory = new Factory(prefab.name, prefab);
@@ -46,6 +47,8 @@ namespace Depra.Pooling
 		}
 
 		public object Key { get; }
+
+		public PoolSettings Settings { get; }
 
 		public int CountAll
 		{
@@ -316,7 +319,7 @@ namespace Depra.Pooling
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public TPooled Create(object key) =>
-				UnityEngine.Object.Instantiate(_original);
+				UnityEngine.Object.Instantiate(_original, _parent);
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public TPooled CreateAsleep() => UnityEngine.Object.Instantiate(_original, _parent);

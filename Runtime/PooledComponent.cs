@@ -7,6 +7,10 @@ namespace Depra.Pooling
 {
 	public abstract class PooledComponent : MonoBehaviour
 	{
+		public virtual void OnPoolCreate() { }
+
+		public virtual void OnPoolSleep() { }
+
 		public abstract void ResetState();
 	}
 }
