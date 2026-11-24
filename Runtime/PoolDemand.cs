@@ -41,8 +41,10 @@ namespace Depra.Pooling
 		}
 
 		/// <param name="report">Receives a <see cref="PoolDemandConflict"/> per prefab that cannot be warmed up.</param>
-		public async Task WarmUpAsync(PoolService service, Action<Exception> report, CancellationToken token)
+		public async Task<IReadOnlyList<PoolWarmup>> WarmUpAsync(PoolService service, Action<Exception> report,
+			CancellationToken token)
 		{
+			var warmups = new List<PoolWarmup>();
 			_entries.Clear();
 			foreach (var source in _sources)
 			{
@@ -64,16 +66,17 @@ namespace Depra.Pooling
 						continue;
 					}
 
-					if (entry.Count > pool.CountAll)
-					{
-						await pool.WarmUpAsync(entry.Count - pool.CountAll, token);
-					}
+					var created = Math.Max(0, entry.Count - pool.CountAll);
+					await pool.WarmUpAsync(created, token);
+					warmups.Add(new PoolWarmup(prefab, entry.Count, created));
 				}
 			}
 			finally
 			{
 				_entries.Clear();
 			}
+
+			return warmups;
 		}
 
 		private static bool TryGetPool(PoolService service, PooledGameObject prefab, PoolSettings settings,
