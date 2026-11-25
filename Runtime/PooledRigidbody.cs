@@ -18,7 +18,6 @@ namespace Depra.Pooling
 			_useGravity = _rigidbody.useGravity;
 		}
 
-		// It may have been set loose, e.g. a weapon dropped by its owner: it comes back the way it was created.
 		public override void OnPoolSleep()
 		{
 			ResetState();
@@ -28,7 +27,6 @@ namespace Depra.Pooling
 
 		public override void ResetState()
 		{
-			// Unity complains when a kinematic body is given a velocity.
 			if (!_rigidbody.isKinematic)
 			{
 				_rigidbody.linearVelocity = Vector3.zero;

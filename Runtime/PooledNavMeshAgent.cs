@@ -6,10 +6,6 @@ using UnityEngine.AI;
 
 namespace Depra.Pooling
 {
-	/// <summary>
-	/// Keeps the agent off while the instance is enabled where it slept,
-	/// so it is created only once the instance is placed.
-	/// </summary>
 	public sealed class PooledNavMeshAgent : PooledComponent
 	{
 		[SerializeField] private NavMeshAgent _agent;
@@ -20,7 +16,6 @@ namespace Depra.Pooling
 
 		public override void ResetState()
 		{
-			// An instance reused while still active keeps its agent, which would pull it back to where it was.
 			if (_agent.enabled)
 			{
 				_agent.Warp(_agent.transform.position);

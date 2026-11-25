@@ -224,7 +224,6 @@ namespace Depra.Pooling
 		private TPooled CreateInstance(out PooledInstance<TPooled> instance)
 		{
 			var obj = _objectFactory.Create(Key);
-			// Before the instance wraps it: wrapping puts it to sleep, which must not come before its creation.
 			obj.OnPoolCreate(this);
 			instance = new PooledInstance<TPooled>(this, obj);
 			++CountAll;
@@ -305,7 +304,6 @@ namespace Depra.Pooling
 				}.transform;
 
 				_parent.SetParent(UnityPoolRoot.Instance);
-				// Instances created under an inactive parent don't run Awake/OnEnable until they are requested.
 				_parent.gameObject.SetActive(false);
 			}
 

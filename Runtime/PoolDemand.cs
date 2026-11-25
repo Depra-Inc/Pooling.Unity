@@ -8,10 +8,6 @@ using System.Threading.Tasks;
 
 namespace Depra.Pooling
 {
-	/// <summary>
-	/// Pools that must be warmed up while loading, declared by whoever spawns from them.
-	/// Sources are asked when the warm-up runs, so a released source leaves nothing behind.
-	/// </summary>
 	public sealed class PoolDemand
 	{
 		private readonly List<Action<PoolDemand>> _sources = new();
@@ -40,7 +36,6 @@ namespace Depra.Pooling
 			_entries[prefab] = new Entry(count, settings, false);
 		}
 
-		/// <param name="report">Receives a <see cref="PoolDemandConflict"/> per prefab that cannot be warmed up.</param>
 		public async Task<IReadOnlyList<PoolWarmup>> WarmUpAsync(PoolService service, Action<Exception> report,
 			CancellationToken token)
 		{
