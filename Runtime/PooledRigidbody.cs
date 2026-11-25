@@ -9,10 +9,29 @@ namespace Depra.Pooling
 	{
 		[SerializeField] private Rigidbody _rigidbody;
 
+		private bool _isKinematic;
+		private bool _useGravity;
+
+		public override void OnPoolCreate()
+		{
+			_isKinematic = _rigidbody.isKinematic;
+			_useGravity = _rigidbody.useGravity;
+		}
+
+		public override void OnPoolSleep()
+		{
+			ResetState();
+			_rigidbody.isKinematic = _isKinematic;
+			_rigidbody.useGravity = _useGravity;
+		}
+
 		public override void ResetState()
 		{
-			_rigidbody.velocity = Vector3.zero;
-			_rigidbody.angularVelocity = Vector3.zero;
+			if (!_rigidbody.isKinematic)
+			{
+				_rigidbody.linearVelocity = Vector3.zero;
+				_rigidbody.angularVelocity = Vector3.zero;
+			}
 		}
 
 #if UNITY_EDITOR

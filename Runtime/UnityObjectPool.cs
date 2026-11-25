@@ -31,6 +31,7 @@ namespace Depra.Pooling
 		public UnityObjectPool(TPooled prefab, PoolSettings settings)
 		{
 			Key = prefab.GetInstanceID();
+			Settings = settings;
 			_maxCapacity = settings.MaxCapacity;
 			_overflowStrategy = settings.OverflowStrategy;
 			_objectFactory = new Factory(prefab.name, prefab);
@@ -46,6 +47,8 @@ namespace Depra.Pooling
 		}
 
 		public object Key { get; }
+
+		public PoolSettings Settings { get; }
 
 		public int CountAll
 		{
@@ -86,7 +89,6 @@ namespace Depra.Pooling
 			}
 
 			instance.OnPoolGet();
-			_objectFactory.OnEnable(Key, obj);
 			_activeInstances.Add(instance);
 
 			return obj;
@@ -113,7 +115,6 @@ namespace Depra.Pooling
 						var obj = ReusePassiveInstance(out var instance);
 						results[lastIndex++] = obj;
 						instance.OnPoolGet();
-						_objectFactory.OnEnable(Key, obj);
 						_activeInstances.Add(instance);
 					}
 				}
@@ -149,12 +150,42 @@ namespace Depra.Pooling
 			return results;
 		}
 
+		public void WarmUp(int count)
+		{
+			for (var index = 0; index < count; index++)
+			{
+				AddAsleep(_objectFactory.CreateAsleep());
+			}
+		}
+
+		public async Task WarmUpAsync(int count, CancellationToken cancellationToken)
+		{
+			if (count <= 0)
+			{
+				return;
+			}
+
+			var created = await _objectFactory.CreateAsync(count, cancellationToken);
+			lock (_sync)
+			{
+				foreach (var obj in created)
+				{
+					AddAsleep(obj);
+				}
+			}
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public void Release(TPooled obj)
 		{
 			if (obj is null)
 			{
 				throw new ArgumentNullException(nameof(obj), "Cannot release a null object.");
+			}
+
+			if (!obj)
+			{
+				return;
 			}
 
 			var instance = PooledInstance<TPooled>.Create(this, obj);
@@ -173,6 +204,14 @@ namespace Depra.Pooling
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		private void AddAsleep(TPooled obj)
+		{
+			++CountAll;
+			obj.OnPoolCreate(this);
+			_passiveInstances.Add(new PooledInstance<TPooled>(this, obj));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private TPooled CreateInstanceOverCapacity(out PooledInstance<TPooled> instance) => _overflowStrategy switch
 		{
 			OverflowStrategy.REQUEST => CreateInstance(out instance),
@@ -184,10 +223,11 @@ namespace Depra.Pooling
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private TPooled CreateInstance(out PooledInstance<TPooled> instance)
 		{
-			instance = new PooledInstance<TPooled>(this, _objectFactory.Create(Key));
-			var obj = instance.Obj;
+			var obj = _objectFactory.Create(Key);
 			obj.OnPoolCreate(this);
+			instance = new PooledInstance<TPooled>(this, obj);
 			++CountAll;
+			_objectFactory.OnEnable(Key, obj);
 
 			return obj;
 		}
@@ -210,7 +250,14 @@ namespace Depra.Pooling
 		private TPooled ReuseActiveInstance(out PooledInstance<TPooled> instance)
 		{
 			instance = _activeInstances.Next();
+			if (!instance.Obj)
+			{
+				--CountAll;
+				return CreateInstance(out instance);
+			}
+
 			var obj = instance.Obj;
+			_objectFactory.OnEnable(Key, obj);
 			obj.OnPoolReuse();
 
 			return obj;
@@ -221,6 +268,7 @@ namespace Depra.Pooling
 		{
 			instance = _passiveInstances.Next();
 			var obj = instance.Obj;
+			_objectFactory.OnEnable(Key, obj);
 			obj.OnPoolReuse();
 
 			return obj;
@@ -256,6 +304,7 @@ namespace Depra.Pooling
 				}.transform;
 
 				_parent.SetParent(UnityPoolRoot.Instance);
+				_parent.gameObject.SetActive(false);
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -269,11 +318,14 @@ namespace Depra.Pooling
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public TPooled Create(object key) =>
-				UnityEngine.Object.Instantiate(_original);
+				UnityEngine.Object.Instantiate(_original, _parent);
+
+			[MethodImpl(MethodImplOptions.AggressiveInlining)]
+			public TPooled CreateAsleep() => UnityEngine.Object.Instantiate(_original, _parent);
 
 			public Task<TPooled[]> CreateAsync(int count, CancellationToken cancellationToken)
 			{
-				var operation = UnityEngine.Object.InstantiateAsync(_original, count, new InstantiateParameters());
+				var operation = UnityEngine.Object.InstantiateAsync(_original, count, new InstantiateParameters { parent = _parent });
 				return operation.AsTask(cancellationToken);
 			}
 
@@ -287,11 +339,7 @@ namespace Depra.Pooling
 			}
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
-			public void OnEnable(object key, TPooled instance)
-			{
-				instance.transform.SetParent(null);
-				instance.gameObject.SetActive(true);
-			}
+			public void OnEnable(object key, TPooled instance) => instance.transform.SetParent(null);
 
 			[MethodImpl(MethodImplOptions.AggressiveInlining)]
 			public void OnDisable(object key, TPooled instance)
@@ -299,7 +347,6 @@ namespace Depra.Pooling
 				if (instance)
 				{
 					instance.transform.SetParent(_parent);
-					instance.gameObject.SetActive(false);
 				}
 			}
 		}
