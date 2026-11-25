@@ -223,9 +223,10 @@ namespace Depra.Pooling
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		private TPooled CreateInstance(out PooledInstance<TPooled> instance)
 		{
-			instance = new PooledInstance<TPooled>(this, _objectFactory.Create(Key));
-			var obj = instance.Obj;
+			var obj = _objectFactory.Create(Key);
+			// Before the instance wraps it: wrapping puts it to sleep, which must not come before its creation.
 			obj.OnPoolCreate(this);
+			instance = new PooledInstance<TPooled>(this, obj);
 			++CountAll;
 			_objectFactory.OnEnable(Key, obj);
 
